@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import * as mammoth from "mammoth";
 
-export default function WordUniversalParser() {
+export default function WordNestedParser() {
   const [jsonData, setJsonData] = useState(null);
 
   const handleFileChange = async (event) => {
@@ -12,51 +12,64 @@ export default function WordUniversalParser() {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       const rawText = result.value;
-      const parsed = parseUniversal(rawText);
+      const parsed = parseToTree(rawText);
       setJsonData(parsed);
     } catch (err) {
-      console.error("Ошибка чтения файла:123213", err);
+      console.error("Ошибка чтения файла:", err);
     }
   };
 
-  const parseUniversal = (text) => {
+  const parseToTree = (text) => {
     const lines = text.split(/\r?\n/).map(l => l.trim());
-    const data = [];
-    let currentSection = null;
+    const root = [];
+    const stack = []; 
 
     const isHeading = (line) => {
       if (!line) return false;
-
-      
-      if (/^\d+(\.\d+)*\s+/.test(line)) return true;
-
-      
-      if (/^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.\s+/.test(line)) return true;
-
- 
-      if (/^(Тема|Глава|Раздел)\b/i.test(line)) return true;
-
-   
-      if (line.length < 60 && line === line.toUpperCase() && /[А-ЯA-Z]/.test(line)) return true;
-
-    
+      if (/^\d+(\.\d+)*\s+/.test(line)) return true; 
+      if (/^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.\s+/.test(line)) return true; 
+      if (/^(Тема|Глава|Раздел)\b/i.test(line)) return true; 
+      if (line.length < 60 && line === line.toUpperCase() && /[А-ЯA-Z]/.test(line)) return true; 
       return false;
     };
 
-    lines.forEach((line, idx) => {
+    const getLevel = (line) => {
+      const numMatch = line.match(/^(\d+(\.\d+)*)/);
+      if (numMatch) {
+        return numMatch[1].split(".").length;
+      }
+      return 1; 
+    };
+
+    lines.forEach(line => {
       if (isHeading(line)) {
-        currentSection = { title: line, content: [] };
-        data.push(currentSection);
-      } else if (line) {
-        if (!currentSection) {
-          currentSection = { title: "Без темы", content: [] };
-          data.push(currentSection);
+        const level = getLevel(line);
+        const newSection = { title: line, content: [], children: [] };
+
+     
+        while (stack.length >= level) {
+          stack.pop();
         }
-        currentSection.content.push(line);
+
+        if (stack.length === 0) {
+          root.push(newSection);
+        } else {
+          stack[stack.length - 1].children.push(newSection);
+        }
+
+        stack.push(newSection);
+      } else if (line) {
+        if (stack.length === 0) {
+          const untitled = { title: "Без темы", content: [line], children: [] };
+          root.push(untitled);
+          stack.push(untitled);
+        } else {
+          stack[stack.length - 1].content.push(line);
+        }
       }
     });
 
-    return data;
+    return root;
   };
 
   return (
