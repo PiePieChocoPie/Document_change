@@ -15,7 +15,7 @@ export default function WordUniversalParser() {
       const parsed = parseUniversal(rawText);
       setJsonData(parsed);
     } catch (err) {
-      console.error("Ошибка чтения файла:", err);
+      console.error("Ошибка чтения файла:123213", err);
     }
   };
 
